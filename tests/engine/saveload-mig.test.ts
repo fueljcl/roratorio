@@ -1,8 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 
 vi.hoisted(() => {
-    // saveload→CSaveController→calchistory.js の $(function(){...}) をモック
-    (globalThis as any).$ = (_fn: any) => {};
     const mockEl = {
         checked: false,
         appendChild: () => {},
@@ -44,7 +42,6 @@ import {
     OnClickClipboardSaveData,
     OnClickLoadSaveData,
     OnClickDeleteSaveData,
-    OnClickUrlOutMIG,
     OnClickUrlInMIG,
     ConvertDataTextMIG,
     AdaptSaveDataStrSizeMIG,
@@ -54,14 +51,11 @@ import {
 import { get as registryGet } from '@engine/runtime/engine-registry.js';
 
 describe('saveload-mig.js', () => {
-    // dewindow: window.ConvertDataTextMIG / OnClickUrlOutMIG は engine-registry へ移行（旧 window 互換テストを置換）。
-    // TypeScript 層（optInSavedata.ts）が registryGet('OnClickUrlOutMIG') 等で呼ぶ配線を検証する。
+    // dewindow: window.ConvertDataTextMIG は engine-registry へ移行（旧 window 互換テストを置換）。
+    // CSaveDataUnitParse.js が get('ConvertDataTextMIG') で呼ぶ配線を検証する。
     describe('engine-registry 登録', () => {
         it('ConvertDataTextMIG が engine-registry に登録されている', () => {
             expect(registryGet('ConvertDataTextMIG')).toBe(ConvertDataTextMIG);
-        });
-        it('OnClickUrlOutMIG が engine-registry に登録されている', () => {
-            expect(registryGet('OnClickUrlOutMIG')).toBe(OnClickUrlOutMIG);
         });
     });
 });

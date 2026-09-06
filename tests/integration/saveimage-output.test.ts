@@ -26,8 +26,9 @@ const JOB_CORPUS_PATH = join(__dirname, 'fixtures/generated-job-corpus.md');
 const SAMPLE_NEW_PATH = join(__dirname, 'fixtures/sample-savedata-new.md');
 const SAMPLE_OLD_PATH = join(__dirname, 'fixtures/sample-savedata-old.md');
 
-// generated-job-corpus.md は職業を切り替えるだけで装備は空のままのため、装備欄
-// （equipSlot/enchCount の CARD_REGION_ID マッピング）の検証には向かない。
+// generated-job-corpus.md の Pass A/B（先頭101件）は職業を切り替えるだけで装備は空のままのため、
+// 装備欄（equipSlot/enchCount の CARD_REGION_ID マッピング）の検証には向かない
+// （Pass C・残件台帳 B-32 は装備を持つが、末尾にあるため下記の均等間引きの対象外）。
 // 実際に武器・カード・エンチャントが入った sample-savedata-*.md（本番URLフィクスチャ）を
 // 全件使い、job-corpus からは職業名・ステータス欄の多様性確保のため少数だけ間引いて足す。
 const jobCorpusAll = loadSaveDataEntries(JOB_CORPUS_PATH, 'saveimage-job');
@@ -75,12 +76,18 @@ describe('generateImage() の出力が画面表示と一致する（マージ前
             await page.goto(`${baseUrl}/ro4/m/calcx.html${q}`, { waitUntil: 'networkidle', timeout: 60000 });
             // 固定700ms待機は、フルスイート実行時の負荷次第でページ読み込み後の初回自動計算が
             // 間に合わないことがあった（saveimage-old[5]のflake。残件台帳 B-13）。
-            // generateImage() が読む g_extraInfoDataBridge.charaData が実際に埋まるまで待つ。
+            // generateImage() が読む g_extraInfoDataBridge.charaData に加え、
+            // これから呼び出す reg.generateImage 自体の登録完了も条件待機に含める
+            // （フルスイート負荷下で reg.generateImage is not a function が発生した実例あり。
+            // memory: project-calc-headless-test-flake「1つの readiness signal だけでは
+            // 不十分」の教訓を適用）。
             await page.waitForFunction(async () => {
                 const dynamicImport = new Function('specifier', 'return import(specifier);') as
                     (specifier: string) => Promise<Record<string, any>>;
                 const mod = await dynamicImport('/engine/ui/CExtraInfoDataBridge.js');
-                return mod.g_extraInfoDataBridge?.charaData != null;
+                const reg = (globalThis as any)._ratorioReg;
+                return mod.g_extraInfoDataBridge?.charaData != null
+                    && typeof reg?.generateImage === 'function';
             });
 
             const result = await page.evaluate(async () => {
